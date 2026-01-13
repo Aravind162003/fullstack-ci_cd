@@ -7,11 +7,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const mongoUrl = process.env.MONGO_URL || "mongodb://mongo:27017/mern";
 
-mongoose.connect(mongoUrl)
-  .then(() => console.log("MongoDB Connected:", mongoUrl))
-  .catch(err => console.error("Mongo connect error:", err));
+
+const MONGO_URI =
+  process.env.MONGO_URI || "mongodb://localhost:27017/mern";
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.error("MongoDB error:", err));
+
 
 app.get("/api/users", async (req, res) => {
   const users = await User.find();
