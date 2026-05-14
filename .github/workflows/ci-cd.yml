@@ -51,16 +51,17 @@ jobs:
       - name: Install Trivy
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y wget gnupg lsb-release curl
+          sudo apt-get install -y wget gnupg
 
-          curl -fsSL https://aquasecurity.github.io/trivy-repo/deb/public.key | \
-          sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+          gpg --dearmor | \
+          sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
 
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | \
-          sudo tee /etc/apt/sources.list.d/trivy.list
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
+          sudo tee -a /etc/apt/sources.list.d/trivy.list
 
-          sudo apt-get update -y
-          sudo apt-get install -y trivy
+          sudo apt-get update 
+          sudo apt-get install  trivy
 
       - name: Trivy File System Scan
         run: |
@@ -69,7 +70,7 @@ jobs:
       - name: Install Gitleaks
         run: |
           sudo apt update -y
-          sudo apt install gitleaks -y
+          sudo apt install -y gitleaks
 
       - name: Gitleaks Code Scan
         run: |
