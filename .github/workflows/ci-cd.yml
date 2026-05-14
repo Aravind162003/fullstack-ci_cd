@@ -58,7 +58,7 @@ jobs:
           sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
 
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | \
-          sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo tee -a /etc/apt/sources.list.d/trivy.list
 
           sudo apt-get update -y
           sudo apt-get install -y trivy
@@ -77,106 +77,45 @@ jobs:
           gitleaks detect source . -r gitleaks-report.json -f json
 
 
-  # test:
-  #
-  #   runs-on: self-hosted
-  #   needs: security-check
-  #
-  #   strategy:
-  #     matrix:
-  #       node-version: [20]
-  #
-  #   steps:
-  #
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: ${{ matrix.node-version }}
-  #
-  #     # Backend Testing
-  #     - name: Install Backend Dependencies
-  #       run: |
-  #         cd backend
-  #         npm install
-  #
-  #     - name: Run Backend Tests
-  #       run: |
-  #         cd backend
-  #         npm test
-  #
-  #     # Frontend Testing
-  #     - name: Install Frontend Dependencies
-  #       run: |
-  #         cd frontend
-  #         npm install
-  #
-  #     - name: Run Frontend Tests
-  #       run: |
-  #         cd frontend
-  #         npm test -- --watchAll=false
+  build_docker_image_and_push:
 
+    runs-on: ubuntu-latest
+    needs: security-check
 
-  # build_project_and_sonar_scan:
-  #
-  #   runs-on: self-hosted
-  #   needs: test
-  #
-  #   strategy:
-  #     matrix:
-  #       node-version: [20]
-  #
-  #   steps:
-  #
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: ${{ matrix.node-version }}
-  #
-  #     # Backend Build
-  #     - name: Install Backend Dependencies
-  #       run: |
-  #         cd backend
-  #         npm install
-  #
-  #     # Frontend Build
-  #     - name: Install Frontend Dependencies
-  #       run: |
-  #         cd frontend
-  #         npm install
-  #
-  #     - name: Build Frontend
-  #       run: |
-  #         cd frontend
-  #         npm run build
-  #
-  #     # Upload Build Artifact
-  #     - name: Upload Frontend Build Artifact
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: frontend-build
-  #         path: frontend/build
-  #
-  #     # SonarQube Scan
-  #     - name: SonarQube Scan
-  #       uses: SonarSource/sonarqube-scan-action@v5.0.0
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #         SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-  #
-  #     # SonarQube Quality Gate
-  #     - name: SonarQube Quality Gate Check
-  #       id: sonarqube-quality-gate-check
-  #       uses: sonarsource/sonarqube-quality-gate-action@master
-  #       with:
-  #         pollingTimeoutSec: 600
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #         SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Setup QEMU
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Setup Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build & Push Backend Image
+      - name: Build and Push Backend Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: aravind2003/fullstack-backend:latest
+          file: ./backend/Dockerfile
+
+      # Build & Push Frontend Image
+      - name: Build and Push Frontend Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: aravind2003/fullstack-frontend:latest
+          file: ./frontend/Dockerfile
