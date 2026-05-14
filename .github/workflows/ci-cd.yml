@@ -1,37 +1,180 @@
-# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
-
 name: CI-CD-Pipeline
 
 on:
   push:
-    branches: [ "master" ]
- 
+    branches:
+      - master
 
 jobs:
+
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     strategy:
       matrix:
         node-version: [20]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-      # Backend
-    - name: Install Backend Dependencies
-      run: |
-        cd backend
-        npm install
 
-    # Frontend
-    - name: Install Frontend Dependencies
-      run: |
-        cd frontend
-        npm install  
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # Backend
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          npm install
+
+      # Frontend
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm install
+
+
+  security-check:
+
+    runs-on: self-hosted
+    needs: build
+
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | \
+          sudo tee -a /etc/apt/sources.list.d/trivy.list
+
+          sudo apt-get update -y
+          sudo apt-get install -y trivy
+
+      - name: Trivy File System Scan
+        run: |
+          trivy fs --format table -o fs-report.json .
+
+      - name: Install Gitleaks
+        run: |
+          sudo apt update -y
+          sudo apt install gitleaks -y
+
+      - name: Gitleaks Code Scan
+        run: |
+          gitleaks detect source . -r gitleaks-report.json -f json
+
+
+  # test:
+
+  #   runs-on: self-hosted
+  #   needs: security-check
+
+  #   strategy:
+  #     matrix:
+  #       node-version: [20]
+
+  #   steps:
+
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v4
+
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: ${{ matrix.node-version }}
+
+  #     # Backend Testing
+  #     - name: Install Backend Dependencies
+  #       run: |
+  #         cd backend
+  #         npm install
+
+  #     - name: Run Backend Tests
+  #       run: |
+  #         cd backend
+  #         npm test
+
+  #     # Frontend Testing
+  #     - name: Install Frontend Dependencies
+  #       run: |
+  #         cd frontend
+  #         npm install
+
+  #     - name: Run Frontend Tests
+  #       run: |
+  #         cd frontend
+  #         npm test -- --watchAll=false
+
+
+  # build_project_and_sonar_scan:
+
+  #   runs-on: self-hosted
+  #   needs: test
+
+  #   strategy:
+  #     matrix:
+  #       node-version: [20]
+
+  #   steps:
+
+  #     - name: Checkout Code
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: ${{ matrix.node-version }}
+
+  #     # Backend Build
+  #     - name: Install Backend Dependencies
+  #       run: |
+  #         cd backend
+  #         npm install
+
+  #     # Frontend Build
+  #     - name: Install Frontend Dependencies
+  #       run: |
+  #         cd frontend
+  #         npm install
+
+  #     - name: Build Frontend
+  #       run: |
+  #         cd frontend
+  #         npm run build
+
+  #     # Upload Build Artifact
+  #     - name: Upload Frontend Build Artifact
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: frontend-build
+  #         path: frontend/build
+
+  #     # SonarQube Scan
+  #     - name: SonarQube Scan
+  #       uses: SonarSource/sonarqube-scan-action@v5.0.0
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #         SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+
+  #     # SonarQube Quality Gate
+  #     - name: SonarQube Quality Gate Check
+  #       id: sonarqube-quality-gate-check
+  #       uses: sonarsource/sonarqube-quality-gate-action@master
+  #       with:
+  #         pollingTimeoutSec: 600
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #         SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
