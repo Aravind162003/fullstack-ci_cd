@@ -140,7 +140,7 @@ jobs:
 
           unzip awscliv2.zip
 
-          sudo ./aws/install
+          sudo ./aws/install --update
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
