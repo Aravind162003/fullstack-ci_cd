@@ -64,6 +64,7 @@ kind: Service
 metadata:
   name: website-backend-service
 spec:
+  type: LoadBalancer
   ports:
   - port: 5000
     targetPort: 5000
