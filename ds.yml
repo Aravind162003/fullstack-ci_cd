@@ -1,0 +1,105 @@
+---
+# MongoDB Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+spec:
+  selector:
+    matchLabels:
+      app: mongodb
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - image: mongo:latest
+        name: mongodb
+        ports:
+        - containerPort: 27017
+          name: mongodb
+---
+# MongoDB Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-service
+spec:
+  ports:
+  - port: 27017
+  selector:
+    app: mongodb
+---
+# Website Backend Deployment (Node.js)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: website-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: website-backend
+  template:
+    metadata:
+      labels:
+        app: website-backend
+    spec:
+      containers:
+      - name: website-backend
+        image: aravind2003/fullstack-backend:latest
+        ports:
+        - containerPort: 5000
+        env:
+        # Connects your Node backend to the MongoDB service above
+        - name: MONGO_URI
+          value: "mongodb://mongo-service:27017/websitedb"
+---
+# Website Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: website-backend-service
+spec:
+  ports:
+  - port: 5000
+    targetPort: 5000
+  selector:
+    app: website-backend
+---
+# Website Frontend Deployment (React/UI)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: website-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: website-frontend
+  template:
+    metadata:
+      labels:
+        app: website-frontend
+    spec:
+      containers:
+      - name: website-frontend
+        image: aravind2003/fullstack-frontend:latest
+        ports:
+        - containerPort: 80
+---
+# Website Frontend Service (Load Balancer)
+apiVersion: v1
+kind: Service
+metadata:
+  name: website-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: website-frontend
