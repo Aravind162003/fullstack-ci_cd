@@ -135,6 +135,19 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # Install AWS CLI
+      - name: Install AWS CLI
+        run: |
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+
+          sudo apt-get update -y
+          sudo apt-get install -y unzip
+
+          unzip awscliv2.zip
+
+          sudo ./aws/install --update
+
+      # Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -142,16 +155,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
+      # Setup kubectl
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: latest
 
+      # Configure kubeconfig
       - name: Configure kubeconfig
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
 
+      # Deploy to EKS
       - name: Deploy to EKS
         run: |
           kubectl apply -f ds.yml
